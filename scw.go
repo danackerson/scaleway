@@ -3,12 +3,14 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/danackerson/scaleway/common"
 	"github.com/digitalocean/godo"
+	"github.com/scaleway/go-scaleway/types"
 	"golang.org/x/oauth2"
 )
 
@@ -19,9 +21,42 @@ var scwServerInfoSite = "https://cloud.scaleway.com/#/zones/par1/servers"
 func main() {
 	client := common.PrepareScalewayLogin()
 
-	client.CheckCredentials()
+	//client.CheckCredentials()
+	//client.GetImages()
+	//client.GetBootscripts()
+
+	//linux4_15Kernel := "acbc1329-c6a0-4320-896b-56f9597f0c3c"
+	//alpineLinux := "24141068-1043-4885-bf2b-8290f617e273"
+	//dockerUbuntu := "c7dd3987-4b40-48d7-9481-b7fd2e597737"
+	ubuntuBionicDocker := "00e48c6b-2896-4b2c-997e-aab7f4ab1c94"
+	definition := &types.ScalewayServerDefinition{
+		Name:           "test",
+		CommercialType: "START1-S",
+		Image:          &ubuntuBionicDocker,
+		EnableIPV6:     true,
+	}
+
+	response, err := client.PostServer(*definition)
+	if err != nil {
+		log.Printf("CREATE ERR: %s", err.Error())
+	}
+	log.Printf(response)
+
 	servers, err := client.GetServers(true, -1)
-	response, err := client.PostServer(definition)
+	if err != nil {
+		log.Printf("GET ERR: %s\n", err.Error())
+	}
+
+	for _, server := range *servers {
+		log.Printf("Created: %s\n", server.PublicAddress.IP)
+		client.PostServerAction(server.Identifier, "poweron") // poweroff, poweron, reboot
+
+		/*client.DeleteServer(server.Identifier)
+		for _, volume := range server.Volumes {
+			client.DeleteVolume(volume.Identifier)
+		}*/
+	}
+	//log.Printf("%v", servers)
 
 	return
 	/*

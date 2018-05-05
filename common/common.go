@@ -34,7 +34,7 @@ var FloatingIPAddress = os.Getenv("doFloatingIP")
 
 // PrepareScalewayLogin does what it says on the box
 func PrepareScalewayLogin() *api.ScalewayAPI {
-	api, err := api.NewScalewayAPI("my-organization", os.Getenv("SCW_TOKEN"), "dafuq", "")
+	api, err := api.NewScalewayAPI(os.Getenv("SCW_ACCESS_KEY"), os.Getenv("SCW_TOKEN"), "goSDK", "par1")
 	if err != nil {
 		log.Printf("ERR: %s\n", err.Error())
 	}
