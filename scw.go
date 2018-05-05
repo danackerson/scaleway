@@ -1,65 +1,69 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/danackerson/digitalocean/common"
+	"github.com/danackerson/scaleway/common"
 	"github.com/digitalocean/godo"
 	"golang.org/x/oauth2"
 )
 
-var doDropletInfoSite = "https://cloud.digitalocean.com/droplets/"
 var encodedDOSSHLoginPubKey = os.Getenv("encodedDOSSHLoginPubKey")
 var circleCIBuild = os.Getenv("CIRCLE_BUILD_NUM")
+var scwServerInfoSite = "https://cloud.scaleway.com/#/zones/par1/servers"
 
 func main() {
-	client := common.PrepareDigitalOceanLogin()
+	client := common.PrepareScalewayLogin()
 
-	fnPtr := flag.String("fn", "updateDNS|createNewServer", "which function to run")
-	dropletIDPtr := flag.String("dropletID", "<digitalOceanDropletID>", "DO droplet to attach floatingIP to")
-	flag.Parse()
-	if *fnPtr == "createNewServer" {
-		droplet := createDroplet(client)
-		waitUntilDropletReady(client, droplet.ID)
-		droplet, _, _ = client.Droplets.Get(oauth2.NoContext, droplet.ID)
+	client.CheckCredentials()
+	servers, err := client.GetServers(true, -1)
+	response, err := client.PostServer(definition)
 
-		ipv4, _ := droplet.PublicIPv4()
-		addr := doDropletInfoSite + strconv.Itoa(droplet.ID)
-		fmt.Printf("%s: %s @%s\n", ipv4, droplet.Name, addr)
+	return
+	/*
+		fnPtr := flag.String("fn", "updateDNS|createNewServer", "which function to run")
+		dropletIDPtr := flag.String("dropletID", "<digitalOceanDropletID>", "DO droplet to attach floatingIP to")
+		flag.Parse()
+		if *fnPtr == "createNewServer" {
+			droplet := createDroplet(client)
+			waitUntilDropletReady(client, droplet.ID)
+			droplet, _, _ = client.Droplets.Get(oauth2.NoContext, droplet.ID)
 
-		// Write /tmp/new_digital_ocean_droplet_params
-		envVarsFile := []byte("export NEW_SERVER_IPV4=" + ipv4 + "\nexport NEW_DROPLET_ID=" + strconv.Itoa(droplet.ID) + "\n")
-		err := ioutil.WriteFile("/tmp/new_digital_ocean_droplet_params", envVarsFile, 0644)
-		if err != nil {
-			fmt.Printf("Failed to write /tmp/new_digital_ocean_droplet_params: %s", err)
-		}
+			ipv4, _ := droplet.PublicIPv4()
+			addr := scwServerInfoSite + strconv.Itoa(droplet.ID)
+			fmt.Printf("%s: %s @%s\n", ipv4, droplet.Name, addr)
 
-		var firewallID = os.Getenv("doFirewallID")
-		_, err2 := client.Firewalls.AddDroplets(oauth2.NoContext, firewallID, droplet.ID)
-		if err2 != nil {
-			fmt.Printf("Failed to add droplet to Firewall: %s", err2)
-		}
-	} else {
-		dropletID, _ := strconv.Atoi(*dropletIDPtr)
-		droplet, _, _ := client.Droplets.Get(oauth2.NoContext, dropletID)
-		fmt.Printf("\ngoing to work on DropletID: %d\n", droplet.ID)
+			// Write /tmp/new_digital_ocean_droplet_params
+			envVarsFile := []byte("export NEW_SERVER_IPV4=" + ipv4 + "\nexport NEW_DROPLET_ID=" + strconv.Itoa(droplet.ID) + "\n")
+			err := ioutil.WriteFile("/tmp/new_digital_ocean_droplet_params", envVarsFile, 0644)
+			if err != nil {
+				fmt.Printf("Failed to write /tmp/new_digital_ocean_droplet_params: %s", err)
+			}
 
-		reassignFloatingIP(client, droplet)
+			var firewallID = os.Getenv("doFirewallID")
+			_, err2 := client.Firewalls.AddDroplets(oauth2.NoContext, firewallID, droplet.ID)
+			if err2 != nil {
+				fmt.Printf("Failed to add droplet to Firewall: %s", err2)
+			}
+		} else {
+			dropletID, _ := strconv.Atoi(*dropletIDPtr)
+			droplet, _, _ := client.Droplets.Get(oauth2.NoContext, dropletID)
+			fmt.Printf("\ngoing to work on DropletID: %d\n", droplet.ID)
 
-		// update ipv6 DNS entry to new droplet
-		ipv6, _ := droplet.PublicIPv6()
-		fmt.Printf("new IPv6 addr: %s\n", ipv6)
-		updateIPV6(client, ipv6, "ackerson.de", 23738236)
-		updateIPV6(client, ipv6, "battlefleet.online", 30208348)
+			reassignFloatingIP(client, droplet)
 
-		common.UpdateFirewall()
-	}
+			// update ipv6 DNS entry to new droplet
+			ipv6, _ := droplet.PublicIPv6()
+			fmt.Printf("new IPv6 addr: %s\n", ipv6)
+			updateIPV6(client, ipv6, "ackerson.de", 23738236)
+			updateIPV6(client, ipv6, "battlefleet.online", 30208348)
+
+			common.UpdateFirewall()
+		}*/
 }
 
 func updateIPV6(client *godo.Client, ipv6 string, hostname string, domainID int) {

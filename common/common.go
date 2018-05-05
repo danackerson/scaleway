@@ -2,16 +2,14 @@ package common
 
 import (
 	"bufio"
-	"context"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
-	"strconv"
-	"time"
 
 	"github.com/digitalocean/godo"
+	"github.com/scaleway/go-scaleway"
 	"golang.org/x/oauth2"
 )
 
@@ -28,19 +26,19 @@ func (t *TokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
-var doPersonalAccessToken = os.Getenv("digitalOceanToken")
+var doPersonalAccessToken = os.Getenv("SCW_TOKEN")
 var firewallID = os.Getenv("doFirewallID")
 
 // FloatingIPAddress is the static IP for ackerson.de
 var FloatingIPAddress = os.Getenv("doFloatingIP")
 
-// PrepareDigitalOceanLogin does what it says on the box
-func PrepareDigitalOceanLogin() *godo.Client {
-	tokenSource := &TokenSource{
-		AccessToken: doPersonalAccessToken,
+// PrepareScalewayLogin does what it says on the box
+func PrepareScalewayLogin() *api.ScalewayAPI {
+	api, err := api.NewScalewayAPI("my-organization", os.Getenv("SCW_TOKEN"), "dafuq", "")
+	if err != nil {
+		log.Printf("ERR: %s\n", err.Error())
 	}
-	oauthClient := oauth2.NewClient(oauth2.NoContext, tokenSource)
-	return godo.NewClient(oauthClient)
+	return api
 }
 
 func prepareSSHipAddresses() []string {
@@ -87,12 +85,12 @@ func linesFromReader(r io.Reader) ([]string, error) {
 
 // UpdateFirewall to maintain connectivity while Telekom rotates IPs
 func UpdateFirewall() {
-	ipAddys := prepareSSHipAddresses()
+	//ipAddys := prepareSSHipAddresses()
 
-	client := PrepareDigitalOceanLogin()
-	ctx := context.TODO()
+	//client := PrepareScalewayLogin()
+	//ctx := context.TODO()
 
-	floatingIP, _, err := client.FloatingIPs.Get(ctx, os.Getenv("doFloatingIP"))
+	/*floatingIP, _, err := client.FloatingIPs.Get(ctx, os.Getenv("doFloatingIP"))
 	for floatingIP.Droplet == nil {
 		if err != nil {
 			log.Println(err)
@@ -152,14 +150,14 @@ func UpdateFirewall() {
 			},
 		},
 		DropletIDs: []int{floatingIP.Droplet.ID},
-	}
+	}*/
 
-	firewallResp, _, err := client.Firewalls.Update(ctx, firewallID, updateRequest)
+	/*firewallResp, _, err := client.Firewalls.Update(ctx, firewallID, updateRequest)
 	if err == nil {
 		log.Println(firewallResp)
 	} else {
 		log.Println(err)
-	}
+	}*/
 }
 
 // DropletList does what it says on the box
@@ -200,14 +198,15 @@ func DropletList(client *godo.Client) ([]godo.Droplet, error) {
 func DeleteDODroplet(ID int) string {
 	var result string
 
-	client := PrepareDigitalOceanLogin()
+	client := PrepareScalewayLogin()
+	client.CheckCredentials()
 
-	_, err := client.Droplets.Delete(oauth2.NoContext, ID)
+	/*_, err := client.Droplets.Delete(oauth2.NoContext, ID)
 	if err == nil {
 		result = "Successfully deleted Droplet `" + strconv.Itoa(ID) + "`"
 	} else {
 		result = err.Error()
-	}
+	}*/
 
 	return result
 }
